@@ -3789,6 +3789,10 @@ class ControlScript(object):
             Output.log("Received signal: {}".format(signum), logging.DEBUG)
         Output.print_and_log("Shutting down...")
         Output.console_access = False
+        # Output still buffered would be lost to the SIGKILL below, and the launcher exits once
+        # the daemon reports.
+        sys.stdout.flush()
+        sys.stderr.flush()
         self.script.daemon_status.report(-1)
 
         # Shutdown all callhome threads gracefully
@@ -5046,12 +5050,19 @@ class ControlScript(object):
             if status is None:
                 Output.print_and_log(
                     "Timed out trying to start {} daemon.".format(SCRIPT_NAME), logging.ERROR)
-                self.stop()
+                try:
+                    self.stop()
+                except SystemExit:
+                    # stop() exits with the status of stopping; this start failed.
+                    sys.exit(1)
             elif status == DaemonStatusPipe.EXITED:
                 # The daemon has exited, so a live pid in the pidfile belongs to another start on
                 # this base_dir, whose servers stop() would kill.
                 Output.log_error_and_exit(
                     "{} daemon exited before reporting its status.".format(SCRIPT_NAME))
+            elif status != 1:
+                # The daemon shut down before it started, and has printed why.
+                sys.exit(1)
             sys.exit()
         os.setsid()
         os.umask(0)
