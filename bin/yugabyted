@@ -4091,6 +4091,13 @@ class ControlScript(object):
                         warnings.append(ui_bin_not_found)
                         self.configs.saved_data["ui"] = False
                     else:
+                        # The UI logs in with the credentials every yugabyted command on this node
+                        # uses, as the yugabyte/charts Helm chart starts it with its authCredentials
+                        # (stable/yugabyte/templates/service.yaml).
+                        ysql_username, ysql_password, _ = \
+                            self.setup_env_init.get_ysql_credentials()
+                        ycql_username, ycql_password, _ = \
+                            self.setup_env_init.get_ycql_credentials()
                         yugabyted_ui_cmd = [ yugabyted_ui_path ] + \
                             [
                                 "-database_host={}".format(advertise_ip),
@@ -4101,14 +4108,14 @@ class ControlScript(object):
                                 "-data_dir={}".format(self.configs.saved_data.
                                                             get("data_dir")),
                                 "-conf_file={}".format(self.conf_file),
-                                "-warnings={}".format("|".join(warnings_for_ui))
+                                "-warnings={}".format("|".join(warnings_for_ui)),
+                                "-ysql_username={}".format(ysql_username),
+                                "-ysql_password={}".format(ysql_password),
+                                "-ycql_username={}".format(ycql_username),
+                                "-ycql_password={}".format(ycql_password)
                             ]
                         if self.configs.saved_data.get("secure"):
-                            yugabyted_ui_cmd.extend(["-secure=true",
-                                "-ysql_password={}".format(
-                                self.configs.saved_data.get("database_password")),
-                                "-ycql_password={}".format(
-                                self.configs.saved_data.get("database_password"))])
+                            yugabyted_ui_cmd.append("-secure=true")
 
                         if self.configs.saved_data.get("ysql_port"):
                             yugabyted_ui_cmd.append("-ysql_port={}".format(
