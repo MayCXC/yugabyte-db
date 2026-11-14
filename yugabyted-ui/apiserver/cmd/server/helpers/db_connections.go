@@ -3,8 +3,8 @@ package helpers
 import (
     "apiserver/cmd/server/logger"
     "context"
-    "fmt"
     "net"
+    "net/url"
     "strconv"
     "time"
 
@@ -73,21 +73,24 @@ func (h *HelperContainer) CreateGoCqlClient(log logger.Logger) *gocql.ClusterCon
 func (h *HelperContainer) CreatePgClient(log logger.Logger,
         connectionParams PgClientConnectionParams) (*pgxpool.Pool, error) {
 
-    var url string
-
-    url = fmt.Sprintf("postgres://%s:%s@%s/%s",
-            connectionParams.User, connectionParams.Password,
-            net.JoinHostPort(connectionParams.Host, strconv.Itoa(connectionParams.Port)),
-            connectionParams.Database)
+    // pgx reads a URL connection string with net/url (parseURLSettings in
+    // https://github.com/jackc/pgx/blob/v5.10.0/pgconn/config.go), so net/url escapes its parts.
+    connURL := url.URL{
+            Scheme: "postgres",
+            User:   url.UserPassword(connectionParams.User, connectionParams.Password),
+            Host:   net.JoinHostPort(connectionParams.Host, strconv.Itoa(connectionParams.Port)),
+            Path:   connectionParams.Database,
+    }
     if Secure {
-            secureOptions := fmt.Sprintf("sslmode=%s", SslMode)
+            params := url.Values{}
+            params.Set("sslmode", SslMode)
             if SslRootCert != "" {
-                    secureOptions = fmt.Sprintf("%s&%s", secureOptions, SslRootCert)
+                    params.Set("sslrootcert", SslRootCert)
             }
-            url = fmt.Sprintf("%s?%s", url, secureOptions)
+            connURL.RawQuery = params.Encode()
     }
 
     log.Debugf("Initializing pgx client.")
-    conn, err := pgxpool.New(context.Background(), url)
+    conn, err := pgxpool.New(context.Background(), connURL.String())
     return conn, err
 }
