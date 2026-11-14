@@ -50,7 +50,7 @@ func init() {
         "password for connecting to the ycql database.")
     flag.StringVar(&SslMode, "ssl_mode", "require",
         "ssl mode for connecting to the database.")
-    flag.StringVar(&SslRootCert, "ssl_root certificate", "",
+    flag.StringVar(&SslRootCert, "ssl_root_cert", "",
         "root certificate for connecting to the database.")
     flag.StringVar(&MasterUIPort, "master_ui_port", "7000",
         "Master UI port.")
