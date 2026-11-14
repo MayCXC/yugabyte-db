@@ -33,6 +33,7 @@ PY_VERSION = sys.version_info[0]
 if PY_VERSION < 3:
     from urllib2 import Request, urlopen, URLError, HTTPError
     from urllib import urlencode
+    from pipes import quote as shlex_quote
     from random import SystemRandom
     _sysrand = SystemRandom()
     PASSWORD_GENNERATOR = _sysrand.choice
@@ -40,6 +41,7 @@ else:
     from urllib.request import Request, urlopen
     from urllib.error import URLError, HTTPError
     from urllib.parse import urlencode, urlparse
+    from shlex import quote as shlex_quote
     import secrets
     PASSWORD_GENNERATOR = secrets.choice
 
@@ -6982,11 +6984,11 @@ class ControlScript(object):
 
 
         ysql_flags = " {} {} -U {} -d {}".format(ysql_hostname_param, ysql_port_param,
-                        ysql_username, ysql_db)
+                        shlex_quote(ysql_username), shlex_quote(ysql_db))
         ycql_flags = " {} {} -u {}".format(cql_hostname_param, cql_port_param,
-                        ycql_username)
+                        shlex_quote(ycql_username))
         if ycql_keyspace is not None:
-            ycql_flags = ycql_flags + " -k {}".format(ycql_keyspace)
+            ycql_flags = ycql_flags + " -k {}".format(shlex_quote(ycql_keyspace))
         if self.configs.saved_data.get("secure"):
             ycql_flags = ycql_flags + " --ssl"
 
