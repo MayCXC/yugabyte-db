@@ -1583,7 +1583,7 @@ To create the universe, do the following:
         --cloud_location=aws.us-east-1.us-east-1c
     ```
 
-When you use the `--secure` flag, yugabyted outputs a message `Credentials File is stored at <credentials_file_path.txt>` with the location of the credentials for the default users.
+When you use the `--secure` flag, the first node outputs a message `Credentials File is stored at <credentials_file_path.txt>` with the location of the credentials for the default users, and each node that joins it outputs `DB_PASSWORD is saved in the Credentials File which has been generated on the 1st node.` To run yugabyted commands that log in to the database, such as `demo connect`, on a node that joined, set the `YSQL_PASSWORD` and `YCQL_PASSWORD` [environment variables](#environment-variables) to that password.
 
 ### Create a multi-zone universe
 
@@ -1633,7 +1633,7 @@ To create a secure multi-zone universe:
         --fault_tolerance=zone
     ```
 
-yugabyted outputs a message `Credentials File is stored at <credentials_file_path.txt>` with the location of the credentials for the default users.
+The first node outputs a message `Credentials File is stored at <credentials_file_path.txt>` with the location of the credentials for the default users, and each node that joins it outputs `DB_PASSWORD is saved in the Credentials File which has been generated on the 1st node.` To run yugabyted commands that log in to the database, such as `demo connect`, on a node that joined, set the `YSQL_PASSWORD` and `YCQL_PASSWORD` [environment variables](#environment-variables) to that password.
 
   {{% /tab %}}
 
@@ -1748,7 +1748,7 @@ To create a secure multi-region universe:
         --fault_tolerance=region
     ```
 
-yugabyted outputs a message `Credentials File is stored at <credentials_file_path.txt>` with the location of the credentials for the default users.
+The first node outputs a message `Credentials File is stored at <credentials_file_path.txt>` with the location of the credentials for the default users, and each node that joins it outputs `DB_PASSWORD is saved in the Credentials File which has been generated on the 1st node.` To run yugabyted commands that log in to the database, such as `demo connect`, on a node that joined, set the `YSQL_PASSWORD` and `YCQL_PASSWORD` [environment variables](#environment-variables) to that password.
 
   {{% /tab %}}
 
