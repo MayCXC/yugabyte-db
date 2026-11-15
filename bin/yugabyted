@@ -4533,7 +4533,10 @@ class ControlScript(object):
             "--use_node_to_node_encryption=true",
             "--use_client_to_server_encryption=true",
             "--certs_for_client_dir={}".format(certs_dir),
-            "--certs_for_cdc_dir={}/xcluster".format(certs_dir),])
+            "--certs_for_cdc_dir={}/xcluster".format(certs_dir),
+            "--cert_node_filename={}".format(self.node_cert_name(
+                self.configs.saved_data.get("master_flags"),
+                tserver_flags, advertise_ip)),])
 
         return common_gflags
 
@@ -4904,7 +4907,9 @@ class ControlScript(object):
 
         if self.configs.saved_data.get("secure"):
             ybc_cmd.extend([
-                "--cert_node_filename={}".format(advertise_ip),
+                "--cert_node_filename={}".format(self.node_cert_name(
+                    self.configs.saved_data.get("master_flags"),
+                    self.configs.saved_data.get("tserver_flags"), advertise_ip)),
                 "--certs_dir_name={}".format(self.configs.saved_data.get("certs_dir")),
             ])
 
@@ -8537,8 +8542,13 @@ class ControlScript(object):
 
         has_errors = False
 
-        certs_files = ["ca.crt", "node."+args.advertise_address+".crt",
-                    "node."+args.advertise_address+".key"]
+        cert_name = self.node_cert_name(
+            self.configs.saved_data.get("master_flags") if args.master_flags is None
+            else args.master_flags,
+            self.configs.saved_data.get("tserver_flags") if args.tserver_flags is None
+            else args.tserver_flags,
+            args.advertise_address)
+        certs_files = ["ca.crt", "node."+cert_name+".crt", "node."+cert_name+".key"]
 
         if args.certs_dir is not None:
             args.certs_dir = os.path.expanduser(args.certs_dir)
@@ -10512,7 +10522,9 @@ class ControlScript(object):
         # TODO(Sanket): Clean up and refactor this file
         YBAdminProxy.set_certs_dir(
             self.configs.saved_data.get("master_flags"), self.configs.saved_data.get("secure"),
-            self.configs.saved_data.get("certs_dir"), self.find_hostname_of_node())
+            self.configs.saved_data.get("certs_dir"),
+            self.node_cert_name(self.configs.saved_data.get("master_flags"),
+                                self.configs.saved_data.get("tserver_flags"), self.advertise_ip()))
 
         YBTableServerCLIProxy.set_certs_dir(self.configs.saved_data.get("master_flags"), \
             self.configs.saved_data.get("secure"), self.configs.saved_data.get("certs_dir"))
@@ -10532,6 +10544,18 @@ class ControlScript(object):
     def advertise_ip(self):
         bind_ip = self.configs.saved_data.get("advertise_address")
         return bind_ip if bind_ip != IP_ANY else IP_LOCALHOST
+
+    # A secure node's certificate is node.<name>.{crt,key} in its certs dir, the name being the
+    # cert_node_filename its master or tserver flags set, else its advertise address. Without
+    # cert_node_filename, yb-master and yb-tserver name it after --server_broadcast_addresses,
+    # which the tserver flags can set apart from the advertise address.
+    def node_cert_name(self, master_flags, tserver_flags, advertise_address):
+        for flags in (master_flags or "", tserver_flags or ""):
+            name = self.get_user_flag_value(flags, self.get_flagfile_dict(flags),
+                                            "cert_node_filename")
+            if name:
+                return name
+        return advertise_address
 
     def master_port(self):
        self.configs.saved_data.get("master_rpc_port")
@@ -11427,7 +11451,7 @@ class YBAdminProxy(object):
         YBAdminProxy.cmd_args.append(find_binary_location("yb-admin"))
 
     @staticmethod
-    def set_certs_dir(master_flags, secure, certs_dir, hostname):
+    def set_certs_dir(master_flags, secure, certs_dir, node_cert_name):
         # If the user is attempting to use TLS, let's point yb-admin to
         # the same certs dir as the master
 
@@ -11451,7 +11475,7 @@ class YBAdminProxy(object):
                   '--certs_dir_name={}'.format(certs_dir_name[0].group(1)))
 
             if 'node_to_node_encryption_use_client_certificates=true' in flags_list:
-                YBAdminProxy.cmd_args.append('--client_node_name={}'.format(hostname))
+                YBAdminProxy.cmd_args.append('--client_node_name={}'.format(node_cert_name))
 
     @staticmethod
     def add_master(master_addrs, new_master_ip, new_master_rpc_port, timeout=30):
